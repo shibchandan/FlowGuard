@@ -1,65 +1,68 @@
-# FlowGuard – Comprehensive Technical Project Report
+# FlowGuard – Technical Project Report & Architectural Submission
 
 **Project Name**: FlowGuard – Configurable Workflow Decision Platform  
 **Target Organization**: ScoreMe Solutions Pvt. Ltd.  
-**Recruitment Drive**: Placement Drive Hackathon (MNNIT Allahabad)  
-**Submission Date**: November 2026  
-**Repository**: [FlowGuard Source Repository](./)  
-**Author**: Candidate, MNNIT Allahabad  
+**Drive**: Placement Drive Hackathon (MNNIT Allahabad)  
+**Candidate Name**: Shib Chandan Mistry  
+**Institute**: Motilal Nehru National Institute of Technology (MNNIT) Allahabad  
+**GitHub Repository**: [https://github.com/shibchandan/FlowGuard](https://github.com/shibchandan/FlowGuard)  
+**Date**: November 13, 2026  
 
 ---
 
 ## Executive Summary
 
-**FlowGuard** is an enterprise-grade, configuration-driven workflow decision platform designed to automate complex, multi-stage business decisions. Built as a high-performance modular monolith in TypeScript, FlowGuard replaces brittle hardcoded business logic with versioned, immutable rule configurations, deterministic rule evaluation, transactional state machine transitions, strict idempotency, simulated dependency fault recovery, and human-in-the-loop manual review queues.
+**FlowGuard** is a configuration-driven workflow decision platform designed to automate complex, multi-stage business decisions (such as credit evaluations, loan origination, and vendor compliance) with zero hardcoded business logic. 
 
-Every decision made by FlowGuard produces a fully explainable audit trace detailing which rules were evaluated, the actual vs. expected values, the operators applied, the pass/fail status, and the exact timestamp.
+Built as a high-performance **Modular Monolith** in **Node.js, Express, TypeScript, and React 18**, FlowGuard decouples policy definitions into versioned, immutable JSON configurations, executes deterministic rule evaluations without arbitrary code execution (`eval()` or `Function()` are strictly banned), coordinates transactional state machine lifecycles, guarantees request idempotency through database-level constraints, simulates downstream dependency fault recovery, and provides human-in-the-loop manual review queues.
 
-The platform achieves a **100% pass rate** on all 27 automated unit and integration tests, operates with zero runtime dynamic code execution (`eval()` or `Function()` are strictly banned), and uses PostgreSQL (Neon cloud) with Prisma ORM for ACID consistency.
+Every decision generates a fully explainable, append-only audit trace documenting the exact input values, comparison operators, configured thresholds, pass/fail results, and execution timestamps.
+
+The platform achieves a **100% pass rate** across all 27 automated unit and integration tests and is backed by a serverless cloud PostgreSQL database with connection pooling and direct migration channels.
 
 ---
 
 ## Table of Contents
 
-1. [Problem Statement & Objectives](#1-problem-statement--objectives)
+1. [Problem Statement & Recruitment Assignment Objectives](#1-problem-statement--recruitment-assignment-objectives)
 2. [High-Level System Architecture](#2-high-level-system-architecture)
-3. [Backend Modular Architecture](#3-backend-modular-architecture)
-4. [Database Architecture & Data Models](#4-database-architecture--data-models)
-5. [State Machine & Execution Lifecycle](#5-state-machine--execution-lifecycle)
-6. [Safe Configurable Rule Engine](#6-safe-configurable-rule-engine)
+3. [Backend Modular Monolith Architecture](#3-backend-modular-monolith-architecture)
+4. [Database Architecture & Entity Relationship Model](#4-database-architecture--entity-relationship-model)
+5. [State Machine Lifecycle & Transitions](#5-state-machine-lifecycle--transitions)
+6. [Safe Configurable Rule Engine Design](#6-safe-configurable-rule-engine-design)
 7. [Idempotency & Concurrency Safety](#7-idempotency--concurrency-safety)
-8. [Dependency Simulator & Fault Recovery](#8-dependency-simulator--fault-recovery)
+8. [Dependency Simulator & Fault Recovery Mechanism](#8-dependency-simulator--fault-recovery-mechanism)
 9. [Role-Based Access Control (RBAC)](#9-role-based-access-control-rbac)
-10. [Frontend Architecture & UI System](#10-frontend-architecture--ui-system)
-11. [Verification & Automated Test Suite](#11-verification--automated-test-suite)
-12. [Security, Performance & Design Decisions](#12-security-performance--design-decisions)
-13. [Step-by-Step Evaluation Walkthrough](#13-step-by-step-evaluation-walkthrough)
-14. [Conclusion & Future Roadmap](#14-conclusion--future-roadmap)
+10. [Frontend Architecture & Dashboard System](#10-frontend-architecture--dashboard-system)
+11. [Automated Test Suite & Quality Assurance](#11-automated-test-suite--quality-assurance)
+12. [Security, Performance & Architectural Decisions](#12-security-performance--architectural-decisions)
+13. [Step-by-Step Evaluator Walkthrough Guide](#13-step-by-step-evaluator-walkthrough-guide)
+14. [Submission Details & Verification](#14-submission-details--verification)
 
 ---
 
-## 1. Problem Statement & Objectives
+## 1. Problem Statement & Recruitment Assignment Objectives
 
-Financial, insurance, and enterprise verification platforms frequently handle workflows such as loan origination, merchant onboarding, underwriting, and claim processing. Traditional architectures suffer from:
-1. **Hardcoded Rules**: Business logic buried inside code requiring code deployment and regression testing for simple policy changes.
-2. **Lack of Explainability**: Inability to provide applicants and auditors with exact mathematical justification for why an application was rejected or sent for review.
-3. **Double-Processing & Race Conditions**: Inability to handle rapid duplicate submissions from flaky network clients safely.
-4. **Fragile External Integrations**: Outages in third-party credit bureaus, identity providers, or fraud checks resulting in stuck or dropped requests without retry tracking.
-5. **Lack of Version Auditing**: Inability to reproduce a decision made months earlier under an earlier policy version.
+Organizations managing sensitive approval flows (such as loan approvals, merchant underwriting, or insurance verification) frequently face operational challenges with legacy systems:
+1. **Rigid Hardcoded Rules**: Simple threshold adjustments (e.g., changing minimum credit score from 750 to 780) require codebase modifications, test cycles, and production redeployments.
+2. **Black-Box Decisions**: Rejected applicants or compliance officers cannot see which specific rule failed or what values triggered the decision.
+3. **Double Execution Vulnerabilities**: Flaky network connections or multiple user clicks can result in duplicate requests being processed simultaneously.
+4. **Third-Party Dependency Brittleness**: Temporary downtime in external credit rating bureaus or KYC services results in lost requests rather than controlled, audited retries.
+5. **No Audit Version Control**: Regulatory inquiries cannot determine which exact workflow rule version was in effect when a decision was executed months prior.
 
-### Core Objectives Delivered:
-- **Zero Hardcoded Rules**: Workflows, schemas, thresholds, and priorities defined in versioned JSON configurations.
+### ScoreMe Recruitment Requirements Implemented:
+- **100% Configurable Rules**: No business logic is hardcoded. Rules, schemas, and thresholds reside in JSON configurations.
 - **Strict Version Immutability**: Published workflow versions cannot be modified; in-flight executions remain permanently pinned to their origin version.
-- **ACID Transactional State Machine**: State transitions recorded with strict linear progression and append-only audit logs.
-- **Database-Level Idempotency**: Cryptographic SHA-256 payload hashing backed by PostgreSQL unique composite indexes.
-- **Configurable Fault Injection**: Internal external dependency simulator with `SUCCESS`, `TEMPORARY_FAILURE`, and `PERMANENT_FAILURE` modes.
-- **Human-in-the-Loop Reviews**: Automatic routing of borderline requests to an authorized reviewer queue with decision attribution.
+- **ACID Transactional State Machine**: Status transitions are linear, validated, and logged to an append-only audit trail.
+- **Cryptographic Idempotency**: SHA-256 payload hashing enforced by PostgreSQL composite unique indexes.
+- **Simulated Dependency & Retry Engine**: Configurable failure simulator (`SUCCESS`, `TEMPORARY_FAILURE`, `PERMANENT_FAILURE`) with retry limits and history.
+- **Human Review Queue**: Borderline cases route automatically to an authorized reviewer inbox for approval or rejection.
 
 ---
 
 ## 2. High-Level System Architecture
 
-FlowGuard employs a **Modular Monolith** architecture. This avoids the distributed transaction and deployment overhead of microservices while maintaining clean separation of concerns and domain boundaries.
+FlowGuard is architected as a **Modular Monolith** to maximize throughput, ensure transaction atomicity, and maintain clean domain boundaries without the network latency and distributed transaction complexity of microservices.
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
@@ -67,12 +70,12 @@ FlowGuard employs a **Modular Monolith** architecture. This avoids the distribut
 │                      React 18 + TypeScript + Vite + Tailwind CSS                       │
 │     [Dashboard]      [Workflows]      [Requests]      [Reviews]      [Audit Logs]      │
 └───────────────────────────────────────────┬────────────────────────────────────────────┘
-                                            │ REST APIs (/api/v1) + JWT
+                                            │ REST APIs (/api/v1) + JWT Bearer
 ┌───────────────────────────────────────────▼────────────────────────────────────────────┐
-│                                   API GATEWAY & MIDDLEWARE                             │
-│       Rate Limiter  │  Helmet  │  CORS  │  JWT Auth Guard  │  RBAC Role Guard  │  Zod  │
+│                             API GATEWAY & SECURITY MIDDLEWARE                          │
+│       Rate Limiting  │  Helmet  │  CORS  │  JWT Auth Guard  │  RBAC Role Guard  │  Zod │
 ├────────────────────────────────────────────────────────────────────────────────────────┤
-│                                  CORE DOMAIN SERVICES                                  │
+│                                  CORE APPLICATION SERVICES                             │
 │                                                                                        │
 │   ┌────────────────────────┐    ┌────────────────────────┐    ┌────────────────────┐   │
 │   │    Request Service     │───►│    Execution Engine    ├───►│  Safe Rule Engine  │   │
@@ -98,43 +101,44 @@ FlowGuard employs a **Modular Monolith** architecture. This avoids the distribut
 
 ---
 
-## 3. Backend Modular Architecture
+## 3. Backend Modular Monolith Architecture
 
-The backend (`d:\FlowGuard\backend\src\`) is structured by business domain:
+The backend codebase (`backend/src/`) is organized strictly by business domain, separating controllers, services, repositories, and validation schemas:
 
 ```
-src/
-├── config/                  # Validated environment configuration (env.ts, database.ts, logger.ts)
-├── middleware/              # Reusable Express middleware
-│   ├── auth.middleware.ts   # JWT extraction, signature verification, user resolution
-│   ├── role.middleware.ts   # Role-Based Access Control guards (ADMIN, OPERATOR, REVIEWER, VIEWER)
-│   ├── validate.middleware.ts# Generic Zod runtime schema request validator
-│   └── error.middleware.ts  # Centralized error handler with standardized JSON error responses
-├── modules/                 # Domain modules
-│   ├── auth/                # Login, JWT issuing, bcrypt hashing, profile retrieval
-│   ├── workflows/           # Definition management, draft iteration, version publishing
-│   ├── rules/               # Pure-function rule evaluator and engine (10 operators)
-│   ├── requests/            # Submission intake, schema validation, listing, history
-│   ├── executions/          # Execution lifecycle orchestration, trace recording, retries
+backend/src/
+├── config/                  # Environment validation, database client, structured logger
+│   ├── env.ts               # Resilient environment loader with type validation
+│   ├── database.ts          # Prisma client instantiation with query logging
+│   └── logger.ts            # Pino structured logger with development formatting
+├── middleware/              # Global request middleware
+│   ├── auth.middleware.ts   # JWT token extraction and signature verification
+│   ├── role.middleware.ts   # Role-Based Access Control guards
+│   ├── validate.middleware.ts# Generic Zod runtime schema validator
+│   └── error.middleware.ts  # Standardized JSON error response handler
+├── modules/                 # Modular domain services
+│   ├── auth/                # Login, JWT issuing, bcrypt password verification
+│   ├── workflows/           # Workflow definitions, draft creation, version publishing
+│   ├── rules/               # Pure-function rule evaluation engine (10 operators)
+│   ├── requests/            # Business request submission, schema check, history
+│   ├── executions/          # Execution lifecycle state transitions, rule traces
 │   ├── idempotency/         # SHA-256 payload hashing, duplicate checking, conflict handling
 │   ├── retry/               # Retry eligibility, attempt counters, retry history
-│   ├── reviews/             # Review queue management, approve/reject decision submission
-│   ├── audit/               # Immutable append-only audit event ledger
-│   ├── dashboard/           # Real-time metrics aggregation and recent activity stream
-│   └── simulator/           # Third-party dependency behavior simulator
-├── shared/                  # Cross-cutting utilities, types, enums, AppError class
-├── tests/                   # Vitest unit & integration test suites
-├── app.ts                   # Express application assembly and middleware binding
-└── server.ts                # Server bootstrapper, graceful shutdown handlers
+│   ├── reviews/             # Reviewer queue management, decision submissions
+│   ├── audit/               # Immutable append-only audit event logging
+│   ├── dashboard/           # Summary metrics aggregation and activity feed
+│   └── simulator/           # Third-party dependency fault injection simulator
+├── shared/                  # Common utilities, enums, response formats, AppError
+├── tests/                   # Vitest unit and integration test suites
+├── app.ts                   # Express application configuration
+└── server.ts                # HTTP server bootstrap and graceful shutdown
 ```
 
 ---
 
-## 4. Database Architecture & Data Models
+## 4. Database Architecture & Entity Relationship Model
 
-FlowGuard uses PostgreSQL for relational data integrity and native **JSONB** for dynamic, schemaless rule configurations and request payloads.
-
-### Entity Relationship Model
+FlowGuard utilizes PostgreSQL for relational integrity and foreign key constraints, combined with native **JSONB** columns for flexible workflow configurations and variable request payloads.
 
 ```
  ┌──────────────┐          ┌───────────────────────┐          ┌─────────────────────┐
@@ -173,18 +177,26 @@ FlowGuard uses PostgreSQL for relational data integrity and native **JSONB** for
                            └──────────────────────┘           └───────────────────┘   └──────────────┘
 ```
 
-### Key Database Design Highlights:
-1. **Idempotency Record Table**: Enforces `UNIQUE(workflowId, idempotencyKey)` at the database constraint level.
-2. **Workflow Version Immutability**: Once `status = 'PUBLISHED'`, version records cannot be mutated. Every execution stores `workflowVersionId` directly.
-3. **Execution History**: `StateTransition` records every status modification with timestamp and triggering actor.
+### Table Definitions & Constraints:
+
+| Table | Purpose | Primary Keys & Constraints |
+|---|---|---|
+| `User` | Operator, Reviewer, and Admin accounts | `id (UUID PK)`, `email (Unique)` |
+| `WorkflowDefinition` | Parent workflow identity | `id (UUID PK)`, `code (Unique)` |
+| `WorkflowVersion` | Immutable versioned rule configurations | `id (UUID PK)`, `UNIQUE(workflowId, version)` |
+| `Request` | Ingested business applications | `id (UUID PK)`, `referenceNumber (Unique)` |
+| `WorkflowExecution` | Execution engine instance | `id (UUID PK)`, `requestId (FK)`, `workflowVersionId (FK)` |
+| `StateTransition` | History of lifecycle state changes | `id (UUID PK)`, `requestId (FK)` |
+| `IdempotencyRecord` | Request deduplication locks | `id (UUID PK)`, `UNIQUE(workflowId, idempotencyKey)` |
+| `RetryRecord` | Execution retry attempts and reasons | `id (UUID PK)`, `executionId (FK)` |
+| `ManualReview` | Pending and resolved manual reviews | `id (UUID PK)`, `requestId (FK)` |
+| `AuditLog` | Append-only security and operational audit trail | `id (UUID PK)`, indexed on `entityType`, `entityId`, `createdAt` |
 
 ---
 
-## 5. State Machine & Execution Lifecycle
+## 5. State Machine Lifecycle & Transitions
 
-FlowGuard implements a strictly validated state machine. Invalid transitions (e.g. attempting to retry a completed execution or re-review an already decided request) throw `400 BAD_REQUEST` errors.
-
-### State Transition Diagram
+Every request progresses through a strictly validated state machine. Invalid transitions return `400 BAD_REQUEST`.
 
 ```
                  ┌───────────────┐
@@ -225,22 +237,12 @@ Success    Timeout       │
 └───────────┘
 ```
 
-### Supported Status Transitions:
-- `SUBMITTED` &rarr; `VALIDATING`
-- `VALIDATING` &rarr; `EVALUATING`, `FAILED`
-- `EVALUATING` &rarr; `PENDING_DEPENDENCY`, `APPROVED`, `REJECTED`, `MANUAL_REVIEW`, `FAILED`
-- `PENDING_DEPENDENCY` &rarr; `APPROVED`, `RETRYING`, `FAILED`
-- `MANUAL_REVIEW` &rarr; `APPROVED`, `REJECTED`
-- `RETRYING` &rarr; `EVALUATING`, `FAILED`
-- `APPROVED` &rarr; `COMPLETED`
-- `REJECTED` &rarr; `COMPLETED`
-
 ---
 
-## 6. Safe Configurable Rule Engine
+## 6. Safe Configurable Rule Engine Design
 
-### Security Guarantee
-Dynamic rule engines commonly suffer from remote code execution vulnerabilities by utilizing `eval()` or `new Function()`. FlowGuard's rule engine is **100% deterministic and pure-functional**, executing only strict comparison algorithms.
+### Security Guarantee: Zero `eval()` Policy
+Dynamic rule engines often introduce remote code execution risks by using JavaScript `eval()` or `Function()`. FlowGuard's engine is built with pure mathematical functions that validate operands against strict comparison operators.
 
 ### Supported Operators:
 
@@ -257,207 +259,180 @@ Dynamic rule engines commonly suffer from remote code execution vulnerabilities 
 | `EXISTS` | Presence | `actual !== undefined && actual !== null` | `"panNumber" EXISTS true` |
 | `NOT_EXISTS` | Absence | `actual === undefined \|\| actual === null` | `"bankruptcyFlag" NOT_EXISTS true` |
 
-### Evaluation Flow & Explainability:
-1. Rules are sorted by `priority` ascending.
-2. Inactive rules (`isActive: false`) are skipped.
-3. Every evaluated rule produces a `RuleEvaluationResult`:
-   - `ruleId`: Unique rule identifier (e.g. `RULE_002`)
-   - `ruleName`: Human-readable name
-   - `field`: Field evaluated
-   - `operator`: Comparison operator
-   - `expectedValue`: Configured threshold
-   - `actualValue`: Value extracted from request payload
-   - `passed`: Boolean evaluation outcome
-   - `message`: Specific explanation (e.g., *"Value 520 is not greater than or equal to 600"*)
-4. If a rule fails:
-   - If `failureAction === 'REJECT'`, evaluation halts and returns immediate decision `REJECTED`.
-   - If `failureAction === 'MANUAL_REVIEW'`, evaluation continues to find all issues, then routes the decision to `MANUAL_REVIEW`.
+### Detailed Evaluation Trace:
+Every evaluated condition emits a granular `RuleEvaluationResult`:
+```json
+{
+  "ruleId": "RULE_002",
+  "ruleName": "Minimum Credit Score (Hard Reject)",
+  "field": "creditScore",
+  "operator": "GTE",
+  "expectedValue": 600,
+  "actualValue": 520,
+  "passed": false,
+  "message": "Value 520 is not greater than or equal to 600",
+  "failureAction": "REJECT"
+}
+```
 
 ---
 
 ## 7. Idempotency & Concurrency Safety
 
-To prevent duplicate financial applications from network retries or concurrent clicks, FlowGuard implements end-to-end idempotency:
-
-1. **Client Header**: Clients submit requests with the `Idempotency-Key` header.
-2. **Payload Hash**: The system computes a deterministic `SHA-256` hash of the sorted JSON body.
-3. **Database Uniqueness**: An `IdempotencyRecord` table enforces atomic uniqueness per `(workflowId, idempotencyKey)`.
-4. **Behavior**:
-   - **Identical Key + Identical Payload**: Returns the existing execution and request details with HTTP **200 OK** without re-executing business rules.
-   - **Identical Key + Different Payload**: Rejects the submission with HTTP **409 Conflict** (`IDEMPOTENCY_KEY_REUSE_PAYLOAD_MISMATCH`).
-   - **New Key**: Creates the idempotency lock and proceeds with execution.
+1. **Header Identification**: Requests accept an `Idempotency-Key` HTTP header.
+2. **Payload Hash**: The server computes a cryptographic `SHA-256` hash of the normalized JSON payload.
+3. **Database Uniqueness**: An `IdempotencyRecord` table enforces `UNIQUE(workflowId, idempotencyKey)` at the database constraint level.
+4. **Outcomes**:
+   - **Identical Key + Identical Payload**: Returns the existing execution record with HTTP **200 OK** without re-running business rules.
+   - **Identical Key + Different Payload**: Returns HTTP **409 Conflict** (`IDEMPOTENCY_KEY_REUSE_PAYLOAD_MISMATCH`).
+   - **Concurrent Duplicate Requests**: PostgreSQL unique index constraint throws a unique key violation; the second request catches the error and safely returns the existing record.
 
 ---
 
-## 8. Dependency Simulator & Fault Recovery
+## 8. Dependency Simulator & Fault Recovery Mechanism
 
-Many enterprise workflows depend on external systems (e.g., Credit Bureaus, National ID APIs). To facilitate complete resilience testing without third-party dependencies, FlowGuard incorporates an internal configurable dependency simulator:
+FlowGuard includes an internal configurable external dependency simulator to replicate third-party integrations (e.g. credit rating agencies or identity verification APIs):
 
-### Simulation Modes:
-- **`SUCCESS`**: External verification succeeds immediately with mock verification reference.
-- **`TEMPORARY_FAILURE` / `TIMEOUT`**: Simulates a transient service timeout. The execution transitions to `RETRYING`.
-- **`PERMANENT_FAILURE`**: Simulates a fatal downstream rejection. The execution transitions to `FAILED`.
+### Configurable Modes:
+- **`SUCCESS`**: Downstream dependency returns HTTP 200 with verification ID.
+- **`TEMPORARY_FAILURE` / `TIMEOUT`**: Downstream dependency times out. The execution transitions to `RETRYING`.
+- **`PERMANENT_FAILURE`**: Downstream dependency rejects the request permanently. The execution transitions to `FAILED`.
 
-### Safe Execution & Retry Mechanism:
-- External calls are invoked **outside database transactions** to prevent long-running locks.
-- When an execution enters `RETRYING`, operators or admins can trigger `POST /api/v1/executions/:id/retry`.
-- The engine checks:
-  1. Execution status must be `RETRYING` or `FAILED`.
-  2. Current attempt count must be less than `maxRetries` (default: 3).
-- Every retry records a `RetryRecord` with attempt number, reason, timestamp, and audit trail.
+### Safe Execution & Retries:
+- Third-party network calls are executed **outside database transactions** to prevent connection pool exhaustion and long-running locks.
+- Executions in `RETRYING` or `FAILED` status can be retried via `POST /api/v1/executions/:id/retry` as long as `attemptNumber < maxRetries` (default: 3).
+- Every attempt records a `RetryRecord` with timestamp and actor attribution.
 
 ---
 
 ## 9. Role-Based Access Control (RBAC)
 
-FlowGuard enforces role-based access control strictly on the server:
-
-| Capability / API Group | ADMIN | OPERATOR | REVIEWER | VIEWER |
+| Capability / Resource | ADMIN | OPERATOR | REVIEWER | VIEWER |
 |---|:---:|:---:|:---:|:---:|
-| **View Dashboard & Metrics** | ✅ | ✅ | ✅ | ✅ |
+| **Dashboard Metrics & Charts** | ✅ | ✅ | ✅ | ✅ |
 | **List Workflows & Requests** | ✅ | ✅ | ✅ | ✅ |
-| **Submit New Business Requests** | ✅ | ✅ | ❌ | ❌ |
-| **Inspect Request Execution & Trace** | ✅ | ✅ | ✅ | ✅ |
-| **Trigger Failed Execution Retries** | ✅ | ✅ | ❌ | ❌ |
-| **Access Manual Reviews Queue** | ✅ | ❌ | ✅ | ❌ |
-| **Approve / Reject Manual Reviews** | ✅ | ❌ | ✅ | ❌ |
-| **Create Workflows & Versions** | ✅ | ❌ | ❌ | ❌ |
+| **Submit Requests** | ✅ | ✅ | ❌ | ❌ |
+| **View Execution Rule Traces** | ✅ | ✅ | ✅ | ✅ |
+| **Trigger Execution Retries** | ✅ | ✅ | ❌ | ❌ |
+| **View Manual Reviews Queue** | ✅ | ❌ | ✅ | ❌ |
+| **Approve / Reject Reviews** | ✅ | ❌ | ✅ | ❌ |
+| **Create & Edit Workflows** | ✅ | ❌ | ❌ | ❌ |
 | **Publish Workflow Versions** | ✅ | ❌ | ❌ | ❌ |
-| **Configure External Simulator** | ✅ | ❌ | ❌ | ❌ |
-| **Inspect Audit Log Ledger** | ✅ | ✅ | ✅ | ✅ |
+| **Configure Simulator Mode** | ✅ | ❌ | ❌ | ❌ |
+| **View Audit Log History** | ✅ | ✅ | ✅ | ✅ |
 
 ---
 
-## 10. Frontend Architecture & UI System
+## 10. Frontend Architecture & Dashboard System
 
-The administrative dashboard is built with **React 18 + TypeScript + Vite + Tailwind CSS**:
+The user interface is built with **React 18 + TypeScript + Vite + Tailwind CSS + Lucide Icons + Recharts**:
 
-### Key Pages & Capabilities:
-1. **Authentication** ([`Login.tsx`](./frontend/src/pages/Login.tsx)):
-   - Standard email/password form with bcrypt verification.
-   - Quick-login demo buttons for all 4 roles (`Admin`, `Operator`, `Reviewer`, `Viewer`).
-2. **Dashboard** ([`Dashboard.tsx`](./frontend/src/pages/Dashboard.tsx)):
-   - Metrics cards: Total Requests, Approved, Rejected, Pending Reviews, Retrying, Failed.
-   - Interactive Recharts visualization for request status breakdown.
-   - Real-time audit activity feed.
-3. **Workflow Management** ([`Workflows.tsx`](./frontend/src/pages/Workflows.tsx), [`WorkflowEditor.tsx`](./frontend/src/pages/WorkflowEditor.tsx), [`WorkflowDetail.tsx`](./frontend/src/pages/WorkflowDetail.tsx)):
-   - Visual rule builder: add/remove rules, select operators, set thresholds, assign failure actions (`REJECT` vs `MANUAL_REVIEW`).
-   - Version history viewer and one-click immutable publishing.
-4. **Request Submission** ([`NewRequest.tsx`](./frontend/src/pages/NewRequest.tsx)):
-   - Dynamic form validation.
-   - One-click presets:
-     - **Preset: Approval (Score 780)**
-     - **Preset: Reject (Score 520)**
-     - **Preset: Review (Score 650)**
-5. **Execution Details & Decision Explainer** ([`RequestDetails.tsx`](./frontend/src/pages/RequestDetails.tsx)):
-   - Visual execution lifecycle timeline (`SUBMITTED` &rarr; `VALIDATING` &rarr; `EVALUATING` &rarr; `APPROVED`).
-   - Granular rule evaluation card displaying every condition, pass/fail badge, expected threshold, actual value, and reason.
-   - One-click retry action button for failed executions.
-6. **Manual Reviews Queue** ([`Reviews.tsx`](./frontend/src/pages/Reviews.tsx), [`ReviewDetail.tsx`](./frontend/src/pages/ReviewDetail.tsx)):
-   - Reviewer inbox with applicant details, rule trace breakdown, and decision modal for reviewer notes and Approve/Reject action.
-7. **Audit Logs** ([`AuditLogs.tsx`](./frontend/src/pages/AuditLogs.tsx)):
-   - Filterable, append-only chronological log of all actions.
-8. **Simulator Controls** ([`Settings.tsx`](./frontend/src/pages/Settings.tsx)):
-   - Real-time toggle between `SUCCESS`, `TEMPORARY_FAILURE`, and `PERMANENT_FAILURE`.
+### Views & Capabilities:
+1. **Authentication** ([`Login.tsx`](https://github.com/shibchandan/FlowGuard/blob/main/frontend/src/pages/Login.tsx)): Dynamic login form with one-click demo login buttons for all 4 roles.
+2. **Dashboard** ([`Dashboard.tsx`](https://github.com/shibchandan/FlowGuard/blob/main/frontend/src/pages/Dashboard.tsx)): Live aggregate metrics, Recharts status distribution charts, and recent activity feed.
+3. **Workflow Management** ([`Workflows.tsx`](https://github.com/shibchandan/FlowGuard/blob/main/frontend/src/pages/Workflows.tsx)): Visual rule editor, threshold modifier, and version publishing.
+4. **New Request Submission** ([`NewRequest.tsx`](https://github.com/shibchandan/FlowGuard/blob/main/frontend/src/pages/NewRequest.tsx)): Dynamic validation with one-click presets for **Approval**, **Rejection**, and **Manual Review**.
+5. **Execution Tracing** ([`RequestDetails.tsx`](https://github.com/shibchandan/FlowGuard/blob/main/frontend/src/pages/RequestDetails.tsx)): Lifecycle progression timeline, pass/fail rule badges, expected vs actual values, and one-click retry triggers.
+6. **Manual Reviews Queue** ([`Reviews.tsx`](https://github.com/shibchandan/FlowGuard/blob/main/frontend/src/pages/Reviews.tsx)): Reviewer inbox with applicant details, rule trace breakdown, and decision modal.
+7. **Audit Logs** ([`AuditLogs.tsx`](https://github.com/shibchandan/FlowGuard/blob/main/frontend/src/pages/AuditLogs.tsx)): Searchable, filterable audit event ledger.
+8. **Simulator & Settings** ([`Settings.tsx`](https://github.com/shibchandan/FlowGuard/blob/main/frontend/src/pages/Settings.tsx)): Real-time dependency simulation controls.
 
 ---
 
-## 11. Verification & Automated Test Suite
+## 11. Automated Test Suite & Quality Assurance
 
-All tests execute via Vitest and pass with zero failures:
+FlowGuard includes unit, state machine, idempotency, and API integration tests executed via Vitest:
 
 ```text
+ RUN  v2.1.9 D:/FlowGuard/backend
+
  ✓ src/tests/unit/stateMachine.test.ts (3 tests) 9ms
  ✓ src/tests/unit/ruleEvaluator.test.ts (17 tests) 21ms
  ✓ src/tests/unit/idempotency.test.ts (3 tests) 9ms
  ✓ src/tests/integration/auth.test.ts (4 tests) 2954ms
+   ✓ Auth & System API Integration > GET /api/v1/health returns status UP 2747ms
 
  Test Files  4 passed (4)
       Tests  27 passed (27)
+   Duration  15.23s
 ```
 
-### Detailed Test Matrix:
+---
 
-| Test File | Target | Scenarios Covered | Status |
-|---|---|---|:---:|
-| `ruleEvaluator.test.ts` | Rule Evaluator | `EQUALS`, `NOT_EQUALS`, `GT`, `GTE`, `LT`, `LTE`, `IN`, `NOT_IN`, `EXISTS`, `NOT_EXISTS`, priority ordering, inactive rule skipping, hard reject precedence, manual review routing | **PASS** |
-| `stateMachine.test.ts` | State Machine | Valid sequential transitions, invalid transition rejection, terminal state protection | **PASS** |
-| `idempotency.test.ts` | Idempotency | Deterministic SHA-256 payload hashing, key reuse validation, conflict detection | **PASS** |
-| `auth.test.ts` | API & Auth | Public health probe, invalid credential rejection, valid JWT generation, protected endpoint authorization | **PASS** |
+## 12. Security, Performance & Architectural Decisions
+
+1. **Modular Monolith over Microservices**: Selected to eliminate distributed network latency and two-phase commit overhead while preserving clean domain interfaces.
+2. **PostgreSQL Relational + JSONB**: Relational tables enforce ACID lifecycle integrity and foreign keys, while JSONB provides flexibility for dynamic business rules and variable schemas.
+3. **Database-Level Idempotency**: PostgreSQL unique indexes ensure race-free deduplication across concurrent submissions.
+4. **Neon Connection Pooling**: Configured `DATABASE_URL` with connection pooling for high-throughput runtime API queries, and `DATABASE_URL_UNPOOLED` via `directUrl` for advisory lock migrations.
+5. **Cryptographic Protection**: `bcrypt` (10 salt rounds) for password storage, HMAC-SHA256 for signed JWT tokens, and SHA-256 for payload hashing.
 
 ---
 
-## 12. Security, Performance & Design Decisions
+## 13. Step-by-Step Evaluator Walkthrough Guide
 
-### 1. Zero `eval()` Policy
-Rule evaluation uses strictly defined pure functions mapping operator strings to strict equality/numeric operators. Malicious rule JSON cannot execute arbitrary code.
+The database is pre-seeded with 4 demo accounts:
 
-### 2. Transactional Integrity with Pooled vs. Direct Connections
-Neon serverless PostgreSQL utilizes a connection pooler (`PgBouncer`). While application queries use pooled connections (`DATABASE_URL`), Prisma schema migrations and advisory locks utilize direct unpooled connections (`DATABASE_URL_UNPOOLED`), configured via `directUrl` in `schema.prisma`.
+| Role | Email | Password |
+|---|---|---|
+| **Admin** | `admin@flowguard.local` | `Admin@123` |
+| **Operator** | `operator@flowguard.local` | `Operator@123` |
+| **Reviewer** | `reviewer@flowguard.local` | `Reviewer@123` |
+| **Viewer** | `viewer@flowguard.local` | `Viewer@123` |
 
-### 3. Separation of External Calls from Database Transactions
-Simulated and real external dependency network calls run before or after database transactions. This prevents connection pool starvation and long-held database locks.
+### Core Demo Scenarios:
 
-### 4. Cryptographic Security
-- Passwords hashed with `bcrypt` (10 salt rounds).
-- JWT signed with HMAC-SHA256 and configurable expiry (`7d`).
-- Rate limiting enabled via `express-rate-limit`.
-- Security HTTP headers enabled via `helmet`.
+#### Scenario 1: Automated Approval
+1. Log in as `operator@flowguard.local` (or click the quick-login button).
+2. Go to **New Request** &rarr; Click **Preset: Approval (Score 780)** &rarr; Click **Submit Request**.
+3. **Result**: Application is evaluated in real time, dependency check passes, and status transitions to **`APPROVED`** / **`COMPLETED`**.
 
----
+#### Scenario 2: Automated Rejection
+1. Go to **New Request** &rarr; Click **Preset: Reject (Score 520)** &rarr; Click **Submit Request**.
+2. **Result**: Application transitions to **`REJECTED`** / **`COMPLETED`**.
+3. The rule trace displays that Rule 002 failed because credit score 520 does not satisfy `>= 600`.
 
-## 13. Step-by-Step Evaluation Walkthrough
+#### Scenario 3: Manual Review Workflow
+1. Go to **New Request** &rarr; Click **Preset: Review (Score 650)** &rarr; Click **Submit Request**.
+2. **Result**: Status becomes **`MANUAL_REVIEW`**.
+3. Log out and log in as `reviewer@flowguard.local`.
+4. Open **Manual Reviews** &rarr; Select the pending application &rarr; Click **Review Decision**.
+5. Enter comment: *"Income verified from bank statements"* &rarr; Click **Approve**.
+6. **Result**: Status updates to **`APPROVED`** with reviewer audit attribution.
 
-To verify the platform's 6 core capabilities:
+#### Scenario 4: Dependency Failure & Retry
+1. Log in as `admin@flowguard.local` &rarr; Go to **Simulator & Settings**.
+2. Set mode to **Temporary Failure / Timeout** &rarr; Click **Activate Mode**.
+3. Submit a valid request with credit score 780 &rarr; Status enters **`RETRYING`**.
+4. Return to **Simulator & Settings** &rarr; Switch mode back to **Normal Success**.
+5. Open the failed request details &rarr; Click **Retry Execution**.
+6. **Result**: Attempt #2 succeeds, and status updates to **`APPROVED`** with full attempt history.
 
-### Scenario 1: Automated Rule Approval
-1. Log in as `operator@flowguard.local`.
-2. Go to **New Request** &rarr; Click **Preset: Approval (Score 780)** &rarr; Submit.
-3. **Outcome**: Request status is `APPROVED` / `COMPLETED`.
-4. Rule trace confirms all rules passed (`age >= 18`, `creditScore >= 750`, `income >= 25000`).
+#### Scenario 5: Idempotency Verification
+1. Submit a request with a fixed `Idempotency-Key` header (e.g. `idem-test-key-101`).
+2. Submit the exact same payload again with the same key &rarr; Returns HTTP **200 OK** with existing record (no duplicate execution).
+3. Submit a *different* payload with the same key &rarr; Server rejects with HTTP **409 Conflict**.
 
-### Scenario 2: Automated Rejection
-1. Go to **New Request** &rarr; Click **Preset: Reject (Score 520)** &rarr; Submit.
-2. **Outcome**: Request status is `REJECTED` / `COMPLETED`.
-3. Rule trace highlights `RULE_002` failed with reason: credit score 520 does not satisfy `>= 600`.
-
-### Scenario 3: Manual Review Workflow
-1. Go to **New Request** &rarr; Click **Preset: Review (Score 650)** &rarr; Submit.
-2. **Outcome**: Request status transitions to `MANUAL_REVIEW`.
-3. Log out & log in as `reviewer@flowguard.local`.
-4. Open **Manual Reviews** queue &rarr; Select pending case.
-5. Add comment: *"Verified salary certificates and bank statements"* &rarr; Click **Approve**.
-6. **Outcome**: Status updates to `APPROVED` with reviewer audit attribution.
-
-### Scenario 4: Dependency Failure & Retry Recovery
-1. Log in as `admin@flowguard.local` &rarr; Open **Simulator & Settings**.
-2. Select **Temporary Failure / Timeout** &rarr; Click **Activate Mode**.
-3. Submit a request with credit score 780 &rarr; Status becomes `RETRYING`.
-4. Switch simulator back to **Normal Success**.
-5. Open request details &rarr; Click **Retry Execution**.
-6. **Outcome**: Attempt #2 succeeds, status updates to `APPROVED` / `COMPLETED`, and retry history records attempt count.
-
-### Scenario 5: Idempotency & Duplicate Prevention
-1. Submit request with header `Idempotency-Key: scoreme-test-idem-001`.
-2. Submit exact same payload again with the same key &rarr; Server returns **200 OK** with existing record (no re-execution).
-3. Submit a *different* payload with the same key &rarr; Server rejects with **409 Conflict**.
-
-### Scenario 6: Immutable Workflow Version Isolation
-1. As Admin, edit the Application Approval workflow and increase credit score to 800.
-2. Publish as **Version 2**.
-3. Previously executed requests remain permanently linked to **Version 1**. New submissions execute against **Version 2**.
+#### Scenario 6: Workflow Version Isolation
+1. As Admin, navigate to **Workflows** &rarr; Edit Application Approval workflow rules.
+2. Change minimum credit score to 800 &rarr; Click **Publish Version**.
+3. Workflow is now at **Version 2**.
+4. Existing requests remain pinned to **Version 1** configuration. New requests execute against **Version 2**.
 
 ---
 
-## 14. Conclusion & Future Roadmap
+## 14. Submission Details & Verification
 
-FlowGuard delivers a complete, production-ready implementation of a configurable workflow decision platform. By leveraging PostgreSQL, TypeScript, and a pure-functional rule engine, it provides the safety, explainability, and fault tolerance demanded by enterprise financial systems.
-
-### Future Enhancements:
-- **Asynchronous Task Workers**: Integrating BullMQ / Redis for distributed asynchronous execution queues.
-- **Complex Conditional Grouping**: Extending the rule engine to support nested `AND` / `OR` tree logic.
-- **Webhook Dispatchers**: Automated outbound HTTP notifications upon terminal state completion.
+- **Candidate Name**: Shib Chandan Mistry
+- **Institute**: MNNIT Allahabad
+- **Submission Target**: `it@scoreme.in`, `manpreet.kaur@scoreme.in`
+- **GitHub Repository**: [https://github.com/shibchandan/FlowGuard](https://github.com/shibchandan/FlowGuard)
+- **Automated Tests**: 27 / 27 Passed (Vitest)
+- **Database**: Cloud PostgreSQL on Neon Serverless (`neondb` on AWS Singapore)
+- **Build Status**:
+  - Backend: `npm run build` &rarr; Exit Code 0 (TypeScript compile clean)
+  - Frontend: `npm run build` &rarr; Exit Code 0 (Vite production bundle clean)
 
 ---
 
-*Report submitted for ScoreMe Placement Drive Hackathon.*
+*FlowGuard – Designed and developed for the ScoreMe Placement Drive Hackathon.*
