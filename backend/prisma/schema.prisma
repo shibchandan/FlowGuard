@@ -1,0 +1,264 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL_UNPOOLED")
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum UserRole {
+  ADMIN
+  OPERATOR
+  REVIEWER
+  VIEWER
+}
+
+enum RequestStatus {
+  RECEIVED
+  VALIDATED
+  PROCESSING
+  APPROVED
+  REJECTED
+  MANUAL_REVIEW
+  RETRYING
+  COMPLETED
+  FAILED
+}
+
+enum ExecutionStatus {
+  RUNNING
+  APPROVED
+  REJECTED
+  MANUAL_REVIEW
+  RETRY
+  COMPLETED
+  FAILED
+}
+
+enum Decision {
+  APPROVED
+  REJECTED
+  MANUAL_REVIEW
+  PENDING
+}
+
+enum WorkflowVersionStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum RetryStatus {
+  PENDING
+  RUNNING
+  SUCCESS
+  FAILED
+  CANCELLED
+}
+
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// ─── Models ───────────────────────────────────────────────────────────────────
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  role         UserRole @default(VIEWER)
+  name         String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  requests         Request[]
+  auditLogs        AuditLog[]
+  assignedReviews  ManualReview[] @relation("AssignedReviewer")
+
+  @@index([email])
+  @@map("users")
+}
+
+model WorkflowDefinition {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  versions WorkflowVersion[]
+  requests Request[]
+
+  @@index([isActive])
+  @@map("workflow_definitions")
+}
+
+model WorkflowVersion {
+  id                   String                @id @default(uuid())
+  workflowDefinitionId String
+  version              Int
+  status               WorkflowVersionStatus @default(DRAFT)
+  config               Json
+  publishedAt          DateTime?
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+
+  // Relations
+  workflowDefinition WorkflowDefinition @relation(fields: [workflowDefinitionId], references: [id])
+  executions         WorkflowExecution[]
+
+  @@unique([workflowDefinitionId, version])
+  @@index([workflowDefinitionId])
+  @@index([status])
+  @@map("workflow_versions")
+}
+
+model Request {
+  id                   String        @id @default(uuid())
+  referenceNumber      String        @unique
+  workflowDefinitionId String
+  userId               String
+  status               RequestStatus @default(RECEIVED)
+  inputData            Json
+  idempotencyKey       String?       @unique
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+
+  // Relations
+  workflowDefinition WorkflowDefinition @relation(fields: [workflowDefinitionId], references: [id])
+  user               User               @relation(fields: [userId], references: [id])
+  executions         WorkflowExecution[]
+  stateTransitions   StateTransition[]
+  idempotencyRecord  IdempotencyRecord?
+  manualReview       ManualReview?
+
+  @@index([status])
+  @@index([userId])
+  @@index([workflowDefinitionId])
+  @@index([createdAt])
+  @@map("requests")
+}
+
+model WorkflowExecution {
+  id                String          @id @default(uuid())
+  requestId         String
+  workflowVersionId String
+  status            ExecutionStatus @default(RUNNING)
+  decision          Decision        @default(PENDING)
+  ruleTrace         Json?
+  errorMessage      String?
+  startedAt         DateTime        @default(now())
+  completedAt       DateTime?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  // Relations
+  request         Request         @relation(fields: [requestId], references: [id])
+  workflowVersion WorkflowVersion @relation(fields: [workflowVersionId], references: [id])
+  retryRecords    RetryRecord[]
+
+  @@index([requestId])
+  @@index([status])
+  @@index([workflowVersionId])
+  @@map("workflow_executions")
+}
+
+model StateTransition {
+  id         String        @id @default(uuid())
+  requestId  String
+  fromStatus RequestStatus?
+  toStatus   RequestStatus
+  reason     String?
+  metadata   Json?
+  createdAt  DateTime      @default(now())
+
+  // Relations
+  request Request @relation(fields: [requestId], references: [id])
+
+  @@index([requestId])
+  @@index([createdAt])
+  @@map("state_transitions")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  entityType String
+  entityId   String
+  action     String
+  actorId    String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  // Relations
+  actor User? @relation(fields: [actorId], references: [id])
+
+  @@index([entityType, entityId])
+  @@index([actorId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model IdempotencyRecord {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  payloadHash String
+  requestId   String   @unique
+  createdAt   DateTime @default(now())
+
+  // Relations
+  request Request @relation(fields: [requestId], references: [id])
+
+  @@index([key])
+  @@map("idempotency_records")
+}
+
+model RetryRecord {
+  id          String      @id @default(uuid())
+  executionId String
+  attemptNumber Int
+  status      RetryStatus @default(PENDING)
+  reason      String?
+  errorMessage String?
+  startedAt   DateTime    @default(now())
+  completedAt DateTime?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  // Relations
+  execution WorkflowExecution @relation(fields: [executionId], references: [id])
+
+  @@index([executionId])
+  @@map("retry_records")
+}
+
+model ManualReview {
+  id              String       @id @default(uuid())
+  requestId       String       @unique
+  status          ReviewStatus @default(PENDING)
+  assignedTo      String?
+  reviewerComment String?
+  reviewedAt      DateTime?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  // Relations
+  request  Request @relation(fields: [requestId], references: [id])
+  reviewer User?   @relation("AssignedReviewer", fields: [assignedTo], references: [id])
+
+  @@index([status])
+  @@index([assignedTo])
+  @@index([createdAt])
+  @@map("manual_reviews")
+}
